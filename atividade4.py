@@ -38,6 +38,26 @@ class Grafo(ABC):
     def is_completo(self):
         pass
 
+    @abstractmethod
+    def get_vertices(self):
+        pass
+
+    @abstractmethod
+    def get_arestas(self):
+        pass
+
+    @abstractmethod
+    def is_subgrafo(self, outrografo):
+        pass
+    
+    @abstractmethod
+    def is_subgrafo_gerador(self, outrografo):
+        pass
+
+    @abstractmethod
+    def is_subgrafo_induzido(self, outrografo):
+        pass
+
 class GrafoDenso(Grafo):
     # Definição do grafo
     def __init__(self, num_vertices=None, labels=None):
@@ -53,16 +73,13 @@ class GrafoDenso(Grafo):
             print("Erro: Forneça 'num_vertices' ou uma lista de 'labels'.")
             sys.exit(1)
 
-        # Cria a matriz de adjacência NxN preenchida com zeros
         self.matriz = [[0] * self.num_vertices for i in range(self.num_vertices)]
         
     
     def numero_de_vertices(self):
-        # Retorna o número total de vértices no grafo.
         return self.num_vertices
 
     def numero_de_arestas(self):
-        # Retorna o número total de arestas no grafo.
         count = 0
         for i in range(self.num_vertices):
             for j in range(i + 1, self.num_vertices):
@@ -71,7 +88,6 @@ class GrafoDenso(Grafo):
         return count
 
     def sequencia_de_graus(self):
-        # Retorna uma lista com os graus de todos os vértices.
         return sorted([sum(row) for row in self.matriz])
 
 
@@ -85,63 +101,88 @@ class GrafoDenso(Grafo):
 
 
     def adicionar_aresta(self, u, v):
-        """
-        Adiciona a aresta entre os vértices u e v.
-        """
         try:
             idx_u = self._obter_indice(u)
             idx_v = self._obter_indice(v)
-
             self.matriz[idx_u][idx_v] = 1
             self.matriz[idx_v][idx_u] = 1
-
             print(f"Aresta adicionada entre {u} e {v}.")
         except ValueError as e:
             print(f"Erro ao adicionar aresta: {e}")
 
 
     def remover_aresta(self, u, v):
-        """
-        Remove a aresta entre os vértices u e v.
-        """
         try:
             idx_u = self._obter_indice(u)
             idx_v = self._obter_indice(v)
-
             if self.matriz[idx_u][idx_v] == 0:
                 print(f"Aresta entre {u} e {v} não existe.")
                 return
-
-            # Remove a aresta
             self.matriz[idx_u][idx_v] = 0
             self.matriz[idx_v][idx_u] = 0
             print(f"Aresta removida entre {u} e {v}.")
-        
         except ValueError as e:
             print(f"Erro ao remover aresta: {e}")
 
     def imprimir(self):
-        """Imprime a matriz de adjacência de forma legível."""
         print("\nMatriz de Adjacência:")
-        # Imprime o cabeçalho das colunas
         header = "   " + "  ".join(self.labels)
         print(header)
         print("─" * len(header))
-
-        # Imprime as linhas com seus respectivos rótulos
         for i, linha in enumerate(self.matriz):
             print(f"{self.labels[i]} |", "  ".join(map(str, linha)))
         print()
 
+    def is_simples(self):
+        for i in range(self.num_vertices):
+            if self.matriz[i][i] != 0:
+                return False
+        return True
+        
+    def is_nulo(self):
+        return self.numero_de_arestas() == 0 and self.num_vertices > 0
+    
+    def is_completo(self):
+        for i in range(self.num_vertices):
+            for j in range(self.num_vertices):
+                if i != j and self.matriz[i][j] == 0:
+                    return False
+        return True
+    
+    def get_vertices(self):
+        return self.labels
+
+    def get_arestas(self):
+        arestas = []
+        for i in range(self.num_vertices):
+            for j in range(i + 1, self.num_vertices):
+                if self.matriz[i][j] != 0:
+                    arestas.append((self.labels[i], self.labels[j]))
+        return arestas
+
+    def is_subgrafo(self, outrografo):
+        return set(self.get_vertices()).issubset(set(outrografo.get_vertices())) and \
+               set(self.get_arestas()).issubset(set(outrografo.get_arestas()))
+    
+    def is_subgrafo_gerador(self, outrografo):
+        return set(self.get_vertices()) == set(outrografo.get_vertices()) and \
+               set(self.get_arestas()).issubset(set(outrografo.get_arestas()))
+
+    def is_subgrafo_induzido(self, outrografo):
+        if not set(self.get_vertices()).issubset(set(outrografo.get_vertices())):
+            return False
+        for u in self.get_vertices():
+            for v in self.get_vertices():
+                if u != v:
+                    tem_aresta_aqui = (u, v) in self.get_arestas() or (v, u) in self.get_arestas()
+                    tem_aresta_lá = (u, v) in outrografo.get_arestas() or (v, u) in outrografo.get_arestas()
+                    if tem_aresta_aqui != tem_aresta_lá:
+                        return False
+        return True
+
 
 class GrafoEsparso(Grafo):
-    """
-    Implementa as operações básicas de um grafo não orientado
-    usando uma LISTA DE ADJACÊNCIAS (implementada com um dicionário).
-    """
-    # (i) Definição do grafo
     def __init__(self, num_vertices=None, labels=None):
-
         if labels:
             self.vertices = labels
         elif num_vertices:
@@ -149,146 +190,105 @@ class GrafoEsparso(Grafo):
         else:
             print("Erro: Forneça 'num_vertices' ou uma lista de 'labels'.")
             sys.exit(1)
-
-        # A lista de adjacências é um dicionário onde cada vértice
-        # é uma chave e o valor é a lista de seus vizinhos.
         self.lista_adj = {vertice: [] for vertice in self.vertices}
 
   
     def numero_de_vertices(self):
-        # Retorna o número total de vértices no grafo.
         return len(self.vertices)
 
     def numero_de_arestas(self):
-        # Retorna o número total de arestas no grafo.
         return int(sum([len(vizinhos) for vizinhos in self.lista_adj.values()])/2)
 
-
     def sequencia_de_graus(self):
-        # Retorna uma lista com os graus de todos os vértices.
         return sorted([len(values) for values in self.lista_adj.values()])
 
-
-
-
     def _validar_vertice(self, vertice):
-        """Método auxiliar para checar se um vértice existe no grafo."""
         if vertice not in self.lista_adj:
             raise ValueError(f"Vértice '{vertice}' não existe no grafo.")
         return True
 
-    # (ii) Adição de arestas
     def adicionar_aresta(self, u, v):
         try:
             self._validar_vertice(u)
             self._validar_vertice(v)
-
-            # Pode adicionar aresta duplicada ou laço (loop)
             self.lista_adj[u].append(v)
             self.lista_adj[v].append(u)
- 
             print(f"Aresta adicionada entre {u} e {v}")
         except ValueError as e:
             print(f"Erro ao adicionar aresta: {e}")
 
-
-    # (v) Remoção de arestas
     def remover_aresta(self, u, v, peso=None):
-        """
-        Se existir mais de uma, remove a primeira aresta entre os vértices u e v.
-        """
         try:
             self._validar_vertice(u)
             self._validar_vertice(v)
-
-            for index, ver in enumerate(self.lista_adj[u]):
-                if v == ver:
-                    del self.lista_adj[u][index]
-                    print(f"Aresta removida entre {u} e {v}.")
-                    break
-            else:
-                print(f"Aresta entre {u} e {v} não existe.")
-
-            for index, ver in enumerate(self.lista_adj[v]):
-                if u == ver:
-                    del self.lista_adj[v][index]
-                    print(f"Aresta removida entre {v} e {u}.")
-                    break
-            else:
-                print(f"Aresta entre {u} e {v} não existe.")
-
+            if v in self.lista_adj[u]:
+                self.lista_adj[u].remove(v)
+            if u in self.lista_adj[v]:
+                self.lista_adj[v].remove(u)
         except ValueError as e:
             print(f"Erro ao remover aresta: {e}")
 
-
-
     def imprimir(self):
-        """Imprime a lista de adjacências de forma legível."""
         print("\nLista de Adjacências:")
-        if not self.lista_adj:
-            print("{}")
-            return
         for vertice, vizinhos in self.lista_adj.items():
-            # Junta a lista de vizinhos em uma string para impressão
-            saida = [vizinho for vizinho in vizinhos]             
-            print(f"  {vertice} -> [ {saida} ]")
+            print(f"  {vertice} -> {vizinhos}")
         print()
 
+    def is_simples(self):
+        for u, vizinhos in self.lista_adj.items():
+            if u in vizinhos:
+                return False
+        return True
+
+    def is_nulo(self):
+        return self.numero_de_arestas() == 0 and len(self.vertices) > 0
+    
+    def is_completo(self):
+        for u in self.vertices:
+            for v in self.vertices:
+                if u != v and v not in self.lista_adj[u]:
+                    return False
+        return True
+
+    def get_vertices(self):
+        return list(self.vertices)
+
+    def get_arestas(self):
+        arestas = []
+        for u in self.lista_adj:
+            for v in self.lista_adj[u]:
+                if (v, u) not in arestas:
+                    arestas.append((u, v))
+        return arestas
+
+    def is_subgrafo(self, outrografo):
+        return set(self.get_vertices()).issubset(set(outrografo.get_vertices())) and \
+               set(self.get_arestas()).issubset(set(outrografo.get_arestas()))
+
+    def is_subgrafo_gerador(self, outrografo):
+        return set(self.get_vertices()) == set(outrografo.get_vertices()) and \
+               set(self.get_arestas()).issubset(set(outrografo.get_arestas()))
+
+    def is_subgrafo_induzido(self, outrografo):
+        if not set(self.get_vertices()).issubset(set(outrografo.get_vertices())):
+            return False
+        for u in self.get_vertices():
+            for v in self.get_vertices():
+                if u != v:
+                    tem_aresta_aqui = (u, v) in self.get_arestas() or (v, u) in self.get_arestas()
+                    tem_aresta_lá = (u, v) in outrografo.get_arestas() or (v, u) in outrografo.get_arestas()
+                    if tem_aresta_aqui != tem_aresta_lá:
+                        return False
+        return True
 
 
 if __name__ == "__main__":
-    
     vertices_labels = ['A', 'B', 'C', 'D', 'E']
-    #g = GrafoDenso(labels=vertices_labels)
-    g = GrafoEsparso(labels=vertices_labels)
-  
-    g.adicionar_aresta('A', 'B')
-    g.adicionar_aresta('A', 'C')
-    g.adicionar_aresta('A', 'C')
-    g.adicionar_aresta('C', 'D')
-    g.adicionar_aresta('C', 'E')
-    g.adicionar_aresta('B', 'D')
-    g.imprimir()
-    print(f"Número de vértices: {g.numero_de_vertices()}")
-    print(f"Número de arestas: {g.numero_de_arestas()}")
-    print(f"Sequência de graus: {g.sequencia_de_graus()}")
-    g.remover_aresta('A', 'C')
-    g.imprimir()
-
-
-    """"
-
-    vertices_labels = ['A', 'B', 'C', 'D', 'E']
-    g = GrafoDenso(labels=vertices_labels)
-
-    print("Grafo inicial criado.")
-    g.imprimir()
-
-    # (ii) Adição de arestas
-    print("\n--- Adicionando arestas ---")
-    g.adicionar_aresta('A', 'B')
-    g.adicionar_aresta('A', 'C')
-    g.adicionar_aresta('B', 'A')
-    g.adicionar_aresta('B', 'E')
-    g.adicionar_aresta('C', 'A')
-    g.imprimir()
-    g.remover_aresta('A', 'C')
-    g.imprimir()
-
-    print(g.numero_de_arestas())
-  
-
-    g = GrafoDenso(num_vertices=5)
-    print("Grafo inicial criado.")
-    g.imprimir()
-    g.adicionar_aresta(1, 2)
-    g.adicionar_aresta(1, 3)
-    g.adicionar_aresta(0, 4)
-    g.adicionar_aresta(1, 4)
-    g.adicionar_aresta(2, 3)
-    g.imprimir()
-    print(g.numero_de_vertices())
-    print(g.numero_de_arestas())
-    print(g.sequencia_de_graus())
-
-"""
+    g1 = GrafoEsparso(labels=vertices_labels)
+    g1.adicionar_aresta('A', 'B')
+    g1.adicionar_aresta('A', 'C')
+    g1.adicionar_aresta('C', 'D')
+    g1.adicionar_aresta('C', 'E')
+    g1.imprimir()
+    print("Vértices:", g1.get_vertices())
+    print("Arestas:", g1.get_arestas())
