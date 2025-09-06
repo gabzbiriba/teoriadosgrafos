@@ -1,5 +1,6 @@
 import sys
 from abc import ABC, abstractmethod
+from itertools import permutations, itertools
 
 class Grafo(ABC):
     @abstractmethod
@@ -55,11 +56,15 @@ class Grafo(ABC):
         pass
 
     @abstractmethod
-    def is_subgrafo_induzido(self, outrografo):
+    def is_subgrafo_induzido(self, grafo):
         pass
 
+    @abstractmethod
+    def is_isomorfo(self, outrografo):
+        pass
+
+
 class GrafoDenso(Grafo):
-    # Definição do grafo
     def __init__(self, num_vertices=None, labels=None):
         if labels:
             self.labels = labels
@@ -73,9 +78,8 @@ class GrafoDenso(Grafo):
             print("Erro: Forneça 'num_vertices' ou uma lista de 'labels'.")
             sys.exit(1)
 
-        self.matriz = [[0] * self.num_vertices for i in range(self.num_vertices)]
-        
-    
+        self.matriz = [[0] * self.num_vertices for _ in range(self.num_vertices)]
+
     def numero_de_vertices(self):
         return self.num_vertices
 
@@ -90,7 +94,6 @@ class GrafoDenso(Grafo):
     def sequencia_de_graus(self):
         return sorted([sum(row) for row in self.matriz])
 
-
     def _obter_indice(self, vertice):
         if isinstance(vertice, str) and vertice in self.mapa_labels:
             return self.mapa_labels[vertice]
@@ -99,28 +102,21 @@ class GrafoDenso(Grafo):
         else:
             raise ValueError(f"Vértice '{vertice}' é inválido.")
 
-
     def adicionar_aresta(self, u, v):
         try:
             idx_u = self._obter_indice(u)
             idx_v = self._obter_indice(v)
             self.matriz[idx_u][idx_v] = 1
             self.matriz[idx_v][idx_u] = 1
-            print(f"Aresta adicionada entre {u} e {v}.")
         except ValueError as e:
             print(f"Erro ao adicionar aresta: {e}")
-
 
     def remover_aresta(self, u, v):
         try:
             idx_u = self._obter_indice(u)
             idx_v = self._obter_indice(v)
-            if self.matriz[idx_u][idx_v] == 0:
-                print(f"Aresta entre {u} e {v} não existe.")
-                return
             self.matriz[idx_u][idx_v] = 0
             self.matriz[idx_v][idx_u] = 0
-            print(f"Aresta removida entre {u} e {v}.")
         except ValueError as e:
             print(f"Erro ao remover aresta: {e}")
 
@@ -138,17 +134,17 @@ class GrafoDenso(Grafo):
             if self.matriz[i][i] != 0:
                 return False
         return True
-        
+
     def is_nulo(self):
         return self.numero_de_arestas() == 0 and self.num_vertices > 0
-    
+
     def is_completo(self):
         for i in range(self.num_vertices):
             for j in range(self.num_vertices):
                 if i != j and self.matriz[i][j] == 0:
                     return False
         return True
-    
+
     def get_vertices(self):
         return self.labels
 
@@ -163,7 +159,7 @@ class GrafoDenso(Grafo):
     def is_subgrafo(self, outrografo):
         return set(self.get_vertices()).issubset(set(outrografo.get_vertices())) and \
                set(self.get_arestas()).issubset(set(outrografo.get_arestas()))
-    
+
     def is_subgrafo_gerador(self, outrografo):
         return set(self.get_vertices()) == set(outrografo.get_vertices()) and \
                set(self.get_arestas()).issubset(set(outrografo.get_arestas()))
@@ -180,6 +176,25 @@ class GrafoDenso(Grafo):
                         return False
         return True
 
+    def is_isomorfo(self, outrografo):
+        if self.numero_de_vertices() != outrografo.numero_de_vertices():
+            return False
+        if self.numero_de_arestas() != outrografo.numero_de_arestas():
+            return False
+        if self.sequencia_de_graus() != outrografo.sequencia_de_graus():
+            return False
+
+        vertices1 = list(self.get_vertices())
+        vertices2 = list(outrografo.get_vertices())
+
+        for perm in itertools.permutations(vertices2):
+            mapping = dict(zip(vertices1, perm))
+            if self._checa_mapeamento_preserva_adjacencia(self, outrografo, mapping):
+                return True
+        return False
+
+    def _checa_mapeamento_preserva_adjacencia(self, grafo1, grafo2)
+
 
 class GrafoEsparso(Grafo):
     def __init__(self, num_vertices=None, labels=None):
@@ -192,12 +207,11 @@ class GrafoEsparso(Grafo):
             sys.exit(1)
         self.lista_adj = {vertice: [] for vertice in self.vertices}
 
-  
     def numero_de_vertices(self):
         return len(self.vertices)
 
     def numero_de_arestas(self):
-        return int(sum([len(vizinhos) for vizinhos in self.lista_adj.values()])/2)
+        return int(sum([len(vizinhos) for vizinhos in self.lista_adj.values()]) / 2)
 
     def sequencia_de_graus(self):
         return sorted([len(values) for values in self.lista_adj.values()])
@@ -211,13 +225,14 @@ class GrafoEsparso(Grafo):
         try:
             self._validar_vertice(u)
             self._validar_vertice(v)
-            self.lista_adj[u].append(v)
-            self.lista_adj[v].append(u)
-            print(f"Aresta adicionada entre {u} e {v}")
+            if v not in self.lista_adj[u]:
+                self.lista_adj[u].append(v)
+            if u not in self.lista_adj[v]:
+                self.lista_adj[v].append(u)
         except ValueError as e:
             print(f"Erro ao adicionar aresta: {e}")
 
-    def remover_aresta(self, u, v, peso=None):
+    def remover_aresta(self, u, v):
         try:
             self._validar_vertice(u)
             self._validar_vertice(v)
@@ -242,7 +257,7 @@ class GrafoEsparso(Grafo):
 
     def is_nulo(self):
         return self.numero_de_arestas() == 0 and len(self.vertices) > 0
-    
+
     def is_completo(self):
         for u in self.vertices:
             for v in self.vertices:
@@ -281,14 +296,40 @@ class GrafoEsparso(Grafo):
                         return False
         return True
 
+    def is_isomorfo(self, outrografo):
+        if self.numero_de_vertices() != outrografo.numero_de_vertices():
+            return False
+        if self.numero_de_arestas() != outrografo.numero_de_arestas():
+            return False
+        if self.sequencia_de_graus() != outrografo.sequencia_de_graus():
+            return False
+
+        vertices_self = self.get_vertices()
+        vertices_other = outrografo.get_vertices()
+
+        for perm in permutations(vertices_other):
+            mapping = dict(zip(vertices_self, perm))
+            arestas_mapeadas = {(mapping[u], mapping[v]) if mapping[u] < mapping[v] else (mapping[v], mapping[u])
+                                for u, v in self.get_arestas()}
+            if arestas_mapeadas == set(outrografo.get_arestas()):
+                return True
+        return False
+
 
 if __name__ == "__main__":
-    vertices_labels = ['A', 'B', 'C', 'D', 'E']
-    g1 = GrafoEsparso(labels=vertices_labels)
+    # Grafo 1: triângulo A-B-C
+    g1 = GrafoEsparso(labels=['A', 'B', 'C'])
     g1.adicionar_aresta('A', 'B')
+    g1.adicionar_aresta('B', 'C')
     g1.adicionar_aresta('A', 'C')
-    g1.adicionar_aresta('C', 'D')
-    g1.adicionar_aresta('C', 'E')
+
+    # Grafo 2: triângulo 1-2-3
+    g2 = GrafoEsparso(labels=['1', '2', '3'])
+    g2.adicionar_aresta('1', '2')
+    g2.adicionar_aresta('2', '3')
+    g2.adicionar_aresta('1', '3')
+
     g1.imprimir()
-    print("Vértices:", g1.get_vertices())
-    print("Arestas:", g1.get_arestas())
+    g2.imprimir()
+
+    print("São isomorfos?", g1.is_isomorfo(g2))  # Esperado: True
