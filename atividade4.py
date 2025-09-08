@@ -1,6 +1,10 @@
+#Aluno: Gabrielle Arruda Rodrigues
+#Matricula: 2312130129
+
 import sys
 from abc import ABC, abstractmethod
-from itertools import permutations, itertools
+from itertools import permutations
+import itertools
 
 class Grafo(ABC):
     @abstractmethod
@@ -193,7 +197,14 @@ class GrafoDenso(Grafo):
                 return True
         return False
 
-    def _checa_mapeamento_preserva_adjacencia(self, grafo1, grafo2)
+    def _checa_mapeamento_preserva_adjacencia(self, grafo1, grafo2, mapping):
+        for u in grafo1.get_vertices():
+            for v in grafo1.get_vertices():
+                if (u,v) in grafo1.get_arestas():
+                    if (mapping[u], mapping[v]) not in grafo2.get_arestas() and \
+                        (mapping[v], mapping[u]) not in grafo2.get_arestas():
+                        return False
+        return True
 
 
 class GrafoEsparso(Grafo):
@@ -314,22 +325,53 @@ class GrafoEsparso(Grafo):
             if arestas_mapeadas == set(outrografo.get_arestas()):
                 return True
         return False
+    
+    def colorir_grafo(self):
+        vertices = self.get_vertices()
+        n = len(vertices)
+        cores = {}
+        max_cores = n
+
+        def e_valido(vertice, cor):
+            for vizinho in self.lista_adj[vertice]:
+                if vizinho in cores and cores[vizinho] == cor:
+                    return False
+            return True
+        
+        def backtracking(indice):
+            if indice == n:
+                return True
+            v = vertices[indice]
+            for cor in range(1, max_cores + 1):
+                if e_valido(v, cor):
+                    cores[v] = cor
+                    if backtracking(indice + 1):
+                        return True
+                    cores.pop(v)
+            return False
+        
+        backtracking(0)
+        numero_de_cores = max(cores.values())
+        return numero_de_cores, cores
 
 
 if __name__ == "__main__":
-    # Grafo 1: triângulo A-B-C
-    g1 = GrafoEsparso(labels=['A', 'B', 'C'])
-    g1.adicionar_aresta('A', 'B')
-    g1.adicionar_aresta('B', 'C')
-    g1.adicionar_aresta('A', 'C')
 
-    # Grafo 2: triângulo 1-2-3
-    g2 = GrafoEsparso(labels=['1', '2', '3'])
-    g2.adicionar_aresta('1', '2')
-    g2.adicionar_aresta('2', '3')
-    g2.adicionar_aresta('1', '3')
+    aulas = ['M', 'A', 'C', 'F', 'Q', 'P']
+    g = GrafoEsparso(labels=aulas)
 
-    g1.imprimir()
-    g2.imprimir()
+    g.adicionar_aresta('C','F')
+    g.adicionar_aresta('C','A')
+    g.adicionar_aresta('F','A')
+    g.adicionar_aresta('M','P')
+    g.adicionar_aresta('M','A')
+    g.adicionar_aresta('P','A')
+    g.adicionar_aresta('Q','F')
 
-    print("São isomorfos?", g1.is_isomorfo(g2))  # Esperado: True
+    for v_origin, v_dest in g.get_arestas():
+        print(f"- Aula {v_origin} tem conflito com: {v_dest}")
+    print("-" * 30)
+
+    numero_minimo_horarios, cores_atribuidas = g.colorir_grafo()
+    print(f"Número mínimo de horários necessários: {numero_minimo_horarios}")
+    print(cores_atribuidas)
